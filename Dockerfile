@@ -1,15 +1,27 @@
-# Use an official OpenJDK image as the base image
-FROM openjdk:17-jdk-slim
+# Stage 1: Build the Maven project
+FROM maven:3.8.8-eclipse-temurin-21 AS builder
 
-# Set the working directory inside the container
-WORKDIR /app
+# Set the working directory
+WORKDIR /build
+
+# Copy the Maven project files to the container
+COPY pom.xml ./
+COPY src ./src
+
+# Install external dependencies into local repository
 RUN mvn clean package -DskipTests -q
 
-# Copy the Spring Boot JAR file into the container
-COPY target/airplane-management-system-0.0.1-SNAPSHOT.jar app.jar
+# Stage 2: Create the runtime image
+FROM maven:3.8.8-eclipse-temurin-21
 
-# Expose the port on which the Spring Boot application runs
+# Set the working directory
+WORKDIR /app
+
+# Copy the built jar from the builder stage
+COPY --from=builder /build/target/airplane-management-system-0.0.1-SNAPSHOT.jar app.jar
+
+# Expose the application port
 EXPOSE 8080
 
-# Command to run the application
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Run the application
+CMD ["java", "-jar", "app.jar"]
